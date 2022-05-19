@@ -4,7 +4,7 @@
 ##' @export
 create_powerscaling_data.brmsfit <- function(x, ...) {
 
-  create_powerscaling_data.default(
+  priorsense::create_powerscaling_data.default(
     x = x,
     log_prior = log_prior_brmsfit,
     log_lik = joint_log_lik_brmsfit,
@@ -28,7 +28,7 @@ powerscale.brmsfit <- function(x,
                                ) {
   psd <- create_powerscaling_data.brmsfit(x, ...)
 
-  powerscale.powerscaling_data(
+  priorsense::powerscale.powerscaling_data(
     psd,
     component = component,
     alpha = alpha,
@@ -47,7 +47,7 @@ powerscale_sequence.brmsfit <- function(x,
 
   psd <- create_powerscaling_data.brmsfit(x, ...)
 
-  powerscale_sequence.powerscaling_data(psd, ...)
+  priorsense::powerscale_sequence.powerscaling_data(psd, ...)
 
 }
 
@@ -61,7 +61,7 @@ powerscale_sensitivity.brmsfit <- function(x,
 
   psd <- create_powerscaling_data.brmsfit(x, ...)
 
-  powerscale_sensitivity.powerscaling_data(
+  priorsense::powerscale_sensitivity.powerscaling_data(
     psd,
     ...
   )
@@ -112,7 +112,7 @@ get_draws_brmsfit <- function(x, variable = NULL, regex = FALSE, ...) {
 moment_match.brmsfit <- function(x, psis, ...) {
   # ensure compatibility with objects not created in the current R session
   x$fit@.MISC <- suppressMessages(brm(fit = x, chains = 0))$fit@.MISC
-  out <- try(moment_match.default(
+  mm <- try(moment_match.default(
     x,
     psis = psis, post_draws = as.matrix,
     unconstrain_pars = unconstrain_pars.brmsfit,
@@ -127,5 +127,27 @@ moment_match.brmsfit <- function(x, psis, ...) {
       "to TRUE when fitting your brms model?"
     )
   }
-  out
+  return(mm)
 }
+
+unconstrain_pars.brmsfit <- function(x, pars, ...) {
+  unconstrain_pars.stanfit(x$fit, pars = pars, ...)
+}
+
+log_prob_upars.brmsfit <- function(x, upars, ...) {
+  log_prob_upars.stanfit(x$fit, upars = upars, ...)
+}
+
+update_pars.brmsfit <- function(x, upars, ...) {
+  x$fit <- update_pars(x$fit, upars = upars, save_old_pars = FALSE, ...)
+  brms::rename_pars(x)
+}
+
+log_ratio_upars.brmsfit <- function(x, upars, component_fn, samples = NULL,
+                                    subset = NULL, ...) {
+  # do not pass subset or nsamples further to avoid subsetting twice
+  x <- update_pars(x, upars = upars, ...)
+  component_draws <- component_fn(x)
+  scaled_log_ratio(component_draws, ...)
+}
+
